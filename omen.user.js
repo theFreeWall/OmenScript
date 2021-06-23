@@ -12,6 +12,7 @@
 // @grant        GM_addStyle
 // @grant        GM_openInTab
 // @grant        GM_setValue
+// @grant        GM_getValue
 // @grant        unsafeWindow
 // @connect     oauth.hpbp.io
 // @connect    task.jysafe.cn
@@ -28,6 +29,7 @@
     const ApplicationId = "6589915c-6aa7-4f1b-9ef5-32fa2220c844";
     const ClientId = "130d43f1-bb22-4a9c-ba48-d5743e84d113";
     const debug = true;
+    const omenAuth = GM_getValue("omenAuth")
 
     const HTTP = (function(){
 
@@ -85,9 +87,11 @@
             GET: get,
             POST: post
         }
-    })()
+    })();
+
     const UI = (function(){
         let login_link = "https://oauth.hpbp.io/oauth/v1/auth?response_type=code&client_id=" + ClientId +"&redirect_uri=http://localhost:9081/login&scope=email+profile+offline_access+openid+user.profile.write+user.profile.username+user.profile.read&state=G5g495-R4cEE" + (Math.random()*100000) +"&max_age=28800&acr_values=urn:hpbp:hpid&prompt=consent"
+        let data = []
 
         const init = ()=>{
             initToolBar();
@@ -131,10 +135,20 @@
                     setParent :true
                 })*/
                 document.getElementById("tool-iframe").style.display = "block"
+                OMEN.refreshToken(omenAuth.refresh_token).then(res=>{
+                    console.log(res)
+                    if(res.status_code===undefined){
+                        GM_setValue("omenAuth", res)
+                         jq("#tool-iframe .omen-sessionresult")[0].innerText = "refresh success"
+                    }else{
+                         jq("#tool-iframe .omen-sessionresult")[0].innerText = res.error_description
+                    }
+                })
                 //let a = GM_addStyle("#tool-iframe{display:block!important;}")
                 //GM_log(a)
             })
         }
+
         function initIframe(link){
             let html = `
 <div id="tool-iframe" style="display:none">
@@ -151,12 +165,16 @@
         <button id="omen-getsession">获取SESSION</button><span class="omen-sessionresult">等待...</span>
         <br>
         <br>
-        <br>
-        <div id="omen-action">
+        <div id="omen-data">
             <div class="omen-action-button">
                 <button>可参与列表</button>
                 <button>进行中</button>
                 <button>已结束</button>
+            </div>
+            <div>
+                <ul>
+                    <li>1</li>
+                </ul>
             </div>
         </div>
     </div>
@@ -164,11 +182,11 @@
 <style>
     #tool-iframe{
         position: fixed;
-        top: 30%;
-        left: 29%;
-        width: 50%;
+        top: 10%;
+        left: 15%;
+        width: 70%;
         background-color: aquamarine;
-        height: 50%;
+        height: 70%;
 
     }
     #tool-iframe .omen-content{
@@ -178,14 +196,14 @@
         position: absolute;
         right: 0;
     }
-    #omen-action{
+    #omen-data{
         border: solid 1px #f00;
-        padding: 1rem;
+        padding: .5rem;
     }
 </style>
             `;
            jq("body").append(html);
-           //document.getElementById("tool-iframe").style.display = "block"
+           document.getElementById("tool-iframe").style.display = "block"
         }
         function EventListener()
         {
@@ -203,7 +221,16 @@
             document.getElementById("omen-getsession").addEventListener("click", (e)=>{
                  let code = jq("#tool-iframe .omen-code")[0].innerText
                  console.log(code)
-                OMEN.session(code)
+                OMEN.session(code).then(res=>{
+                    res = res.response
+                    console.log(res)
+                    if(res.status_code===undefined){
+                        GM_setValue("omenAuth", res)
+                         jq("#tool-iframe .omen-sessionresult")[0].innerText = "success"
+                    }else{
+                         jq("#tool-iframe .omen-sessionresult")[0].innerText = res.error_description
+                    }
+                })
             })
 
         }
@@ -212,9 +239,8 @@
             initIframe: initIframe
         }
     })();
+
     const OMEN = (()=>{
-        let code;
-        let session;
         const init = (data)=>{
         }
         const getSession = (code)=>{
@@ -225,7 +251,7 @@
                 return encodeURIComponent(key) + "=" + encodeURIComponent(json[key]);
             }).join("&");
 
-            HTTP.POST(url, {
+            return HTTP.POST(url, {
                 dataType: "json",
                 data: params,
                 headers: {
@@ -234,20 +260,31 @@
                     "Accept": "application/json",
                     "Except": "100-continue"
                 }
-            }).then(res=>{
-                res = res.response
-                console.log(res)
-                if(res.status_code===403){
-                     jq("#tool-iframe .omen-sessionresult")[0].innerText = res.error_description
-                }else{
-                    GM_setValue("authData", res)
-                     jq("#tool-iframe .omen-sessionresult")[0].innerText = "success"
+            })
+        }
+        const refreshToken = (refresh_token)=>{
+            let url = "https://oauth.hpbp.io/oauth/v1/token";
+            let json = OMEN_BODY.refreshToken(refresh_token);
+            var params = Object.keys(json).map(function (key) {
+                // body...
+                return encodeURIComponent(key) + "=" + encodeURIComponent(json[key]);
+            }).join("&");
+
+            return HTTP.POST(url, {
+                dataType: "json",
+                data: params,
+                headers: {
+                    "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+                    "User-Agent": "Mozilla/4.0 (compatible; MSIE 5.01; Windows NT 5.0)",
+                    "Accept": "application/json",
+                    "Except": "100-continue"
                 }
             })
         }
         return {
             init: init,
-            session:getSession
+            session:getSession,
+            refreshToken: refreshToken
         }
     })();
     const OMEN_BODY = (()=>{
@@ -257,18 +294,24 @@
         const auth = (code)=>{
             return {
                 grant_type: "authorization_code",
-                code, code,
+                code: code,
                 client_id: ClientId,
                 redirect_uri: "http://localhost:9081/login"
             }
         }
+        const refreshToken = (refresh_token)=>{
+            return {
+                grant_type: "refresh_token",
+                refresh_token: refresh_token,
+                client_id: ClientId,
+            }
+        }
         return {
-            auth: auth
+            auth: auth,
+            refreshToken: refreshToken
         }
     })();
-    unsafeWindow.addEventListener('error', event => {
-        console.log(event);
-    }, true);
+
     jq(document).ready(()=>{
         if(window.location.href.includes("keylol")){
             UI.init();
