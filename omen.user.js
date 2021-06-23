@@ -31,7 +31,7 @@
     const ApplicationId = "6589915c-6aa7-4f1b-9ef5-32fa2220c844";
     const ClientId = "130d43f1-bb22-4a9c-ba48-d5743e84d113";
     const debug = true;
-    const omenAuth = GM_getValue("omenAuth")
+    let omenAuth = GM_getValue("omenAuth")
 
     const HTTP = (function(){
 
@@ -178,8 +178,7 @@
                 <button id="omen-history-btn">已结束</button>
             </div>
             <div>
-                <ul>
-                    <li>1</li>
+                <ul id="omen-item-list">
                 </ul>
             </div>
         </div>
@@ -250,14 +249,45 @@
                     }else{
                         jq("#tool-iframe .omen-sessionresult")[0].innerText = res.error_description;
                     }
+                }).catch(err=>{
+                    console.log("err", err)
                 })
             })
 
             document.getElementById("omen-list-btn").addEventListener("click", ()=>{
                 OMEN.getChallengeList(sessionToken).then(res=>{
-                    console.log(res);
+                    //console.log(res);
+                    let resp = res.response;
+                    console.log(resp)
+                    let list = resp.result.collection;
+
+                    jq("#omen-item-list").empty();
+                    list.forEach(item=>{
+                        let id = `${item.challengeStructureId}|${item.prize.campaignId}`
+                        jq("#omen-item-list").append(`<li >${item.prize.displayName} - ${item.displayName}    <button id="${id}">参加</button>` )
+                        // 监听事件
+                        document.getElementById(id).addEventListener("click", (e)=>{
+                            let id = e.target.id.split("|");
+                            OMEN.join(sessionToken, id[0], id[1]).then(res=>{
+                                console.log(res)
+                                if(res.status===200){
+                                    alert("success")
+                                    document.getElementById(e.target.id).parentElement.remove()
+                                }else{
+                                    alert("失败，详细信息在控制台");
+                                }
+                            })
+                        })
+                    })
+
                 });
             });
+            document.getElementById("omen-current-btn").addEventListener("click", ()=>{
+                console.log("进行中")
+            })
+            document.getElementById("omen-history-btn").addEventListener("click", ()=>{
+                console.log("已完成|待抽奖");
+            })
 
         }
         return {
@@ -268,6 +298,7 @@
 
     const OMEN = (()=>{
         const init = (data)=>{
+            console.log(data)
         }
         const getToken = (code)=>{
             let url = "https://oauth.hpbp.io/oauth/v1/token";
@@ -320,16 +351,18 @@
 
                     return RPCRequest(OMEN_BODY.handShake(res.response.token))
                 }else{
-                    return new Promise().reject()
+                    return Promise.reject(res)
                 }
             }).then(res=>{
                 res = res.response;
-
-                return RPCRequest(OMEN_BODY.start(res.result.token));
+                return RPCRequest(OMEN_BODY.start(res.result.token, res.result.players[0].externalPlayerId));
             })
         }
         const getChallengeList = (session)=>{
             return RPCRequest(OMEN_BODY.challengeList(session))
+        }
+        const join = (session, challengeStructureId, campaignId)=>{
+            return RPCRequest(OMEN_BODY.join(session, challengeStructureId, campaignId));
         }
         const RPCRequest = (params) => {
             return HTTP.POST("https://rpc-prod.versussystems.com/rpc", {
@@ -347,7 +380,8 @@
             getToken:getToken,
             refreshToken: refreshToken,
             getSession: getSession,
-            getChallengeList: getChallengeList
+            getChallengeList: getChallengeList,
+            join: join
         }
     })();
     const OMEN_BODY = (()=>{
@@ -385,15 +419,28 @@
             body.params.pageSize = 10;
             return body;
         }
-        const start = (token)=>{
-            let body = {
+        const join = (session, challengeStructureId, campaignId)=>{
+            let body = JSON.parse(JSON.stringify(basic));
+            body.method = "mobile.challenges.v2.join";
+            body.params.sessionToken = session;
+            body.params.challengeStructureId = challengeStructureId;
+            body.params.campaignId = campaignId;
+            body.params.timezone = "China Standard Time"
+            return body;
+        }
+        const start = (token, externalPlayerId)=>{
+
+            //let uinfo = JSON.parse(window.atob(omenAuth.access_token.split(".")[1]))
+            //body.params.accountToken = token;
+            //body.params.externalPlayerId = uinfo.hpid_user_id;
+            return {
                 "jsonrpc": "2.0",
                 "id": ApplicationId,
                 "method": "mobile.sessions.v2.start",
                 "params": {
-                    "accountToken": null,
+                    "accountToken": token,
                     "applicationId": ApplicationId,
-                    "externalPlayerId": "hpid_user_id",
+                    "externalPlayerId": externalPlayerId,
                     "eventNames": [
                         "PLAY:OVERWATCH",
                         "PLAY:HEROES_OF_THE_STORM",
@@ -631,12 +678,6 @@
                     "userPreferredLanguage": "en"
                 }
             };
-            let uinfo = JSON.parse(window.atob(omenAuth.access_token.split(".")[1]))
-            body.params.accountToken = token;
-            body.params.externalPlayerId = uinfo.hpid_user_id;
-            body.params.page = 1;
-            body.params.pageSize = 10;
-            return body;
         }
 
         const auth = (code)=>{
@@ -661,7 +702,8 @@
             refreshToken: refreshToken,
             challengeList: challengeList,
             handShake: handShake,
-            start: start
+            start: start,
+            join: join
         }
     })();
 
