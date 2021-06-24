@@ -161,7 +161,7 @@
                     if(res.status_code===undefined){
                         GM_setValue("omenAuth", res)
                         omenAuth = res;
-                         jq("#omen-iframe .omen-tokenresult")[0].innerText = "refresh success"
+                         jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken刷新成功"
                     }else{
                          jq("#omen-iframe .omen-tokenresult")[0].innerText = res.error_description
                     }
@@ -179,6 +179,35 @@
             jq(".omen-content>.omen-header>.omen-loading>.icon").css("display", "none");
             jq(".omen-content>.omen-header>.omen-loading").css("visibility", "hidden");
         }
+        const setState = (state)=>{
+            const action = {
+                1: ()=>{
+                    // 需要登录，获取AccessToken
+                    document.getElementById("omen-localhost-link").disabled = false;
+                    document.getElementById("omen-getsession").disabled = true;
+                    document.getElementById("omen-list-btn").disabled = true;
+                    document.getElementById("omen-current-btn").disabled = true;
+                    document.getElementById("omen-prize-btn").disabled = true;
+                },
+                2: ()=>{
+                    // 获取SESSION
+                    document.getElementById("omen-localhost-link").disabled = true;
+                    document.getElementById("omen-getsession").disabled = false;
+                    document.getElementById("omen-list-btn").disabled = true;
+                    document.getElementById("omen-current-btn").disabled = true;
+                    document.getElementById("omen-prize-btn").disabled = true;
+                },
+                3: ()=>{
+                    // OK状态，可进行其它操作
+                    document.getElementById("omen-localhost-link").disabled = true;
+                    document.getElementById("omen-getsession").disabled = true;
+                    document.getElementById("omen-list-btn").disabled = false;
+                    document.getElementById("omen-current-btn").disabled = false;
+                    document.getElementById("omen-prize-btn").disabled = false;
+                }
+            }
+            action[state]();
+        }
         function initIframe(link){
             let html = `
             <div id="omen-mask"></div>
@@ -191,20 +220,21 @@
             t="1624536136145" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="3441" width="20" height="20"><path d="M940.802 939.949c0 0.014 0 0.021-0.051 0.044-28.183 28.22-73.991 28.262-102.218 0.05L512.127 614.299 186.382 940.653c-0.051 0.021-0.051 0.05-0.051 0.05-28.227 28.235-74.035 28.256-102.262 0.052-28.328-28.248-28.372-74.05-0.146-102.32l325.746-326.37L83.313 186.312c-28.278-28.227-28.328-74.027-0.094-102.29 0-0.022 0-0.036 0.044-0.052 28.183-28.19 73.948-28.212 102.226-0.007l326.355 325.745L837.64 83.34l0.044-0.051c28.234-28.227 73.99-28.256 102.269-0.014 28.32 28.226 28.32 74.027 0.094 102.312L614.3 511.942l326.406 325.745c28.228 28.227 28.322 74.02 0.095 102.262z" p-id="3442" fill="#2c2c2c"></path></svg>
             <!--<button id="omen-iframe-close" onclick="document.getElementById('omen-mask').style.display = document.getElementById('omen-iframe').style.display = 'none'">关闭</button>-->
         </div>
-        
+
         <h2>功能</h2>
-        <a href="${link}" target="_blank">登录</a><br>
-        <lable for="omen-localhost-link">
-        localhost:<input id="omen-localhost-link" type="text" />
-        <lable>
-        <br>CODE:<span class="omen-code">等待...</span>
-        <br>
-        <br>
-        <button id="omen-gettoken">获取ACCESSTOKEN</button><span class="omen-tokenresult">等待...</span>
-        <br>
-        <button id="omen-getsession">获取SESSION</button><span class="omen-sessionresult">等待...</span>
-        <br>
-        <br>
+        <div>
+            <a href="${link}" target="_blank" style="font-size:1.5rem">登录</a><br>
+            <label for="omen-localhost-link">
+                localhost:<input id="omen-localhost-link" type="text" />
+            </label>
+            <br>CODE:<span class="omen-code">等待...</span>
+            <br>
+            <button id="omen-refreshtoken">刷新AccessToken</button><span class="omen-tokenresult">等待...</span>
+            <br>
+            <button id="omen-getsession">获取SESSION</button><span class="omen-sessionresult">等待...</span>
+            <br>
+            <br>
+        </div>
         <div id="omen-data">
             <div class="omen-action-button">
                 <button id="omen-list-btn">可参与列表</button>
@@ -226,7 +256,7 @@
         left: 0;
         top: 0;
         z-index: 998;
-        background: #0d0a31!important;
+        background: #000000d1!important;
         opacity: .85!important;
         display: none;
     }
@@ -235,8 +265,8 @@
         top: 10%;
         left: 15%;
         width: 70%;
-        background-color: aquamarine;
-        height: 70%;
+        background-color: #66bbff;
+        height: 80%;
         z-index: 999;
         overflow:hidden;
         border-radius: .5rem;
@@ -289,6 +319,7 @@
             `;
            jq("body").append(html);
            document.getElementById("omen-iframe").style.display = "block"
+           document.getElementById("omen-mask").style.display = "block"
         }
 
         function EventListener(){
@@ -302,13 +333,7 @@
                     jq("#omen-iframe .omen-code")[0].innerText = "解析失败";
                 }else{
                     jq("#omen-iframe .omen-code")[0].innerText = codeR[1]
-                }
-            }
-
-            document.getElementById("omen-gettoken").addEventListener("click", (e)=>{
-                let code = jq("#omen-iframe .omen-code")[0].innerText
-                console.log(code)
-                OMEN.getToken(code).then(res=>{
+                    OMEN.getToken(codeR[1]).then(res=>{
                     res = res.response
                     console.log(res)
                     if(res.status_code===undefined){
@@ -319,18 +344,38 @@
                         jq("#omen-iframe .omen-tokenresult")[0].innerText = res.error_description
                     }
                 })
+                }
+            }
+
+            document.getElementById("omen-refreshtoken").addEventListener("click", (e)=>{
+                let code = jq("#omen-iframe .omen-code")[0].innerText
+                console.log(code)
+
+                OMEN.refreshToken(omenAuth.refresh_token).then(res=>{
+                    console.log(res)
+                    res = res.response;
+                    if(res.status_code===undefined){
+                        GM_setValue("omenAuth", res)
+                        omenAuth = res;
+                         jq("#omen-iframe .omen-tokenresult")[0].innerText = "refresh success"
+                    }else{
+                         jq("#omen-iframe .omen-tokenresult")[0].innerText = res.error_description
+                    }
+                })
             })
 
             document.getElementById("omen-getsession").addEventListener("click", (e)=>{
+                    jq("#omen-iframe .omen-sessionresult")[0].innerText = "获取中~";
                 OMEN.getSession(omenAuth.access_token).then(res=>{
                     console.log(res)
                     if(res.status===200){
                         jq("#omen-iframe .omen-sessionresult")[0].innerText = sessionToken = res.response.result.sessionId;
                     }else{
-                        jq("#omen-iframe .omen-sessionresult")[0].innerText = res.error_description;
+                        jq("#omen-iframe .omen-sessionresult")[0].innerText = res.response.error_description;
                     }
                 }).catch(err=>{
                     console.log("err", err)
+                    jq("#omen-iframe .omen-sessionresult")[0].innerText = "AccessToken可能过期了！";
                 })
             })
 
@@ -427,7 +472,8 @@
             init: init,
             initIframe: initIframe,
             showLoading: showLoading,
-            hideLoading: hideLoading
+            hideLoading: hideLoading,
+            setState: setState
         }
     })();
 
