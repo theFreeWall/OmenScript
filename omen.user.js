@@ -161,9 +161,10 @@
                     if(res.status_code===undefined){
                         GM_setValue("omenAuth", res)
                         omenAuth = res;
-                         jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken刷新成功"
+                        UI.setState(2)
+                        jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken刷新成功"
                     }else{
-                         jq("#omen-iframe .omen-tokenresult")[0].innerText = res.error_description
+                        jq("#omen-iframe .omen-tokenresult")[0].innerText = res.error_description
                     }
                 })
                 //let a = GM_addStyle("#omen-iframe{display:block!important;}")
@@ -291,21 +292,24 @@
         animation: rotate 1s linear infinite;  /*开始动画后无限循环，用来控制rotate*/
     }
     @keyframes rotate{
-    0%{
-        transform: rotate(0);
-      }
-    50%{
-    	transform:rotate(180deg);
-    }
-    100%{
-         transform: rotate(360deg);
-    	}
+        0%{
+                transform: rotate(0);
+              }
+        50%{
+                transform:rotate(180deg);
+            }
+        100%{
+                 transform: rotate(360deg);
+                }
 	}
 
     #omen-iframe-close{
         position: absolute;
         right: 20px;
         cursor: pointer;
+    }
+    input#omen-localhost-link:disabled {
+        background-color: #dddddd;
     }
     #omen-data{
         border: solid 1px #f00;
@@ -318,8 +322,8 @@
 </style>
             `;
            jq("body").append(html);
-           document.getElementById("omen-iframe").style.display = "block"
-           document.getElementById("omen-mask").style.display = "block"
+           //document.getElementById("omen-iframe").style.display = "block"
+           //document.getElementById("omen-mask").style.display = "block"
         }
 
         function EventListener(){
@@ -334,42 +338,43 @@
                 }else{
                     jq("#omen-iframe .omen-code")[0].innerText = codeR[1]
                     OMEN.getToken(codeR[1]).then(res=>{
-                    res = res.response
-                    console.log(res)
-                    if(res.status_code===undefined){
-                        GM_setValue("omenAuth", res)
-                        omenAuth = res;
-                        jq("#omen-iframe .omen-tokenresult")[0].innerText = "success"
-                    }else{
-                        jq("#omen-iframe .omen-tokenresult")[0].innerText = res.error_description
-                    }
-                })
+                        console.log(res)
+                        let resp = res.response
+                        if(resp.status_code===undefined){
+                            GM_setValue("omenAuth", resp)
+                            omenAuth = resp;
+                            UI.setState(2)
+                            jq("#omen-iframe .omen-tokenresult")[0].innerText = "成功"
+                        }else{
+                            jq("#omen-iframe .omen-tokenresult")[0].innerText = resp.error_description
+                        }
+                    })
                 }
             }
 
             document.getElementById("omen-refreshtoken").addEventListener("click", (e)=>{
-                let code = jq("#omen-iframe .omen-code")[0].innerText
-                console.log(code)
+                jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken刷新中..."
 
                 OMEN.refreshToken(omenAuth.refresh_token).then(res=>{
                     console.log(res)
-                    res = res.response;
-                    if(res.status_code===undefined){
-                        GM_setValue("omenAuth", res)
-                        omenAuth = res;
-                         jq("#omen-iframe .omen-tokenresult")[0].innerText = "refresh success"
+                    let resp = res.response;
+                    if(resp.status_code===undefined){
+                        GM_setValue("omenAuth", resp)
+                        omenAuth = resp;
+                        jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken刷新成功"
                     }else{
-                         jq("#omen-iframe .omen-tokenresult")[0].innerText = res.error_description
+                        jq("#omen-iframe .omen-tokenresult")[0].innerText = resp.error_description
                     }
                 })
             })
 
             document.getElementById("omen-getsession").addEventListener("click", (e)=>{
-                    jq("#omen-iframe .omen-sessionresult")[0].innerText = "获取中~";
+                jq("#omen-iframe .omen-sessionresult")[0].innerText = "获取中~";
                 OMEN.getSession(omenAuth.access_token).then(res=>{
                     console.log(res)
                     if(res.status===200){
                         jq("#omen-iframe .omen-sessionresult")[0].innerText = sessionToken = res.response.result.sessionId;
+                        UI.setState(3);
                     }else{
                         jq("#omen-iframe .omen-sessionresult")[0].innerText = res.response.error_description;
                     }
@@ -411,7 +416,7 @@
                 jq("#omen-item-list").empty();
                 console.log("进行中")
                 OMEN.currentList(sessionToken).then(res=>{
-                     let resp = res.response;
+                    let resp = res.response;
                     console.log(resp)
                     let list = resp.result.collection;
 
