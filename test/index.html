@@ -5,7 +5,7 @@
 <body>
     <script src="../js/sha256.min.js"></script>
     <script>
-        class signature {
+        class Signature {
             constructor(b) {
                 this.body = b;
             }
@@ -108,6 +108,7 @@
                 return new Uint8Array(bytes);
             }
         }
+        
         const body = {
             params: {
                 applicationId: "6589915c-6aa7-4f1b-9ef5-32fa2220c844",
@@ -119,7 +120,7 @@
             }
         }
         // rDoHn3RAHsjk0aaRc7IrZ72XH/Q6pi6ojuBcXUnI3e8=
-        const signStr = new signature(body).getSignature();
+        const signStr = new Signature(body).getSignature();
         console.log(signStr)
         console.log(signStr === "rDoHn3RAHsjk0aaRc7IrZ72XH/Q6pi6ojuBcXUnI3e8=")
     </script>

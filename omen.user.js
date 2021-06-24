@@ -19,6 +19,7 @@
 // @connect    www.hpgamestream.com
 // @connect    rpc-prod.versussystems.com
 // @require      https://cdn.staticfile.org/jquery/3.3.1/jquery.min.js
+// @require      https://cdn.jsdelivr.net/gh/jiyeme/OmenScript@2455ec2ff19eaf628b10d792bf2e95bbf28c8ff2/js/sha256.min.js
 // @icon         https://www.google.com/s2/favicons?domain=keylol.com
 // ==/UserScript==
 // @require      http://127.0.0.1:5500/js/main.ed19e0b4.chunk.js
@@ -136,6 +137,8 @@
                     active: true,
                     setParent :true
                 })*/
+                if(document.getElementById("tool-iframe").style.display==="block")return ;
+
                 document.getElementById("tool-iframe").style.display = "block"
                 OMEN.refreshToken(omenAuth.refresh_token).then(res=>{
                     console.log(res)
@@ -255,13 +258,13 @@
             })
 
             document.getElementById("omen-list-btn").addEventListener("click", ()=>{
+                jq("#omen-item-list").empty();
                 OMEN.getChallengeList(sessionToken).then(res=>{
                     //console.log(res);
                     let resp = res.response;
                     console.log(resp)
                     let list = resp.result.collection;
 
-                    jq("#omen-item-list").empty();
                     list.forEach(item=>{
                         let id = `${item.challengeStructureId}|${item.prize.campaignId}`
                         jq("#omen-item-list").append(`<li >${item.prize.displayName} - ${item.displayName}    <button id="${id}">参加</button>` )
@@ -283,7 +286,36 @@
                 });
             });
             document.getElementById("omen-current-btn").addEventListener("click", ()=>{
+                jq("#omen-item-list").empty();
                 console.log("进行中")
+                OMEN.currentList(sessionToken).then(res=>{
+                     let resp = res.response;
+                    console.log(resp)
+                    let list = resp.result.collection;
+
+                    list.forEach(item=>{
+                        let id = `${item.challengeStructureId}|${item.prize.campaignId}`
+                        jq("#omen-item-list").append(`<li >${item.prize.displayName} - ${item.displayName}    <button id="${id}" data-eventname="${item.relevantEvents[0]}">做任务（${item.progressPercentage}%）</button>` )
+                        // 监听事件
+                        document.getElementById(id).addEventListener("click", (e)=>{
+                            console.log(e)
+
+                            let time=prompt('请输入任务执行时间(单位:分钟)：');
+                            console.log(time)
+
+                            OMEN.doIt(sessionToken, e.target.dataset.eventname, parseInt(time)).then(res=>{
+                                console.log(res)
+                                const resp = res.response;
+                                const progress = resp.result[0].progressPercentage;
+                                if(res.status===200){
+                                    document.getElementById(e.target.id).innerText = `做任务（${progress}%）`
+                                }else{
+                                    alert("失败，详细信息在控制台");
+                                }
+                            })
+                        })
+                    })
+                })
             })
             document.getElementById("omen-history-btn").addEventListener("click", ()=>{
                 console.log("已完成|待抽奖");
@@ -364,6 +396,13 @@
         const join = (session, challengeStructureId, campaignId)=>{
             return RPCRequest(OMEN_BODY.join(session, challengeStructureId, campaignId));
         }
+        const currentList = (session)=>{
+            return RPCRequest(OMEN_BODY.current(session));
+        }
+        const doIt = (session, eventName, time)=>{
+            return RPCRequest(OMEN_BODY.doIt(session, eventName, time))
+        }
+        const historyList = (session)=>{}
         const RPCRequest = (params) => {
             return HTTP.POST("https://rpc-prod.versussystems.com/rpc", {
                 dataType: "json",
@@ -381,7 +420,10 @@
             refreshToken: refreshToken,
             getSession: getSession,
             getChallengeList: getChallengeList,
-            join: join
+            join: join,
+            currentList: currentList,
+            doIt: doIt,
+            historyList: historyList,
         }
     })();
     const OMEN_BODY = (()=>{
@@ -427,6 +469,37 @@
             body.params.campaignId = campaignId;
             body.params.timezone = "China Standard Time"
             return body;
+        }
+        const current = (session)=>{
+            let body = JSON.parse(JSON.stringify(basic));
+            body.method = "mobile.challenges.v2.current";
+            body.params.sessionToken = session;
+            body.params.page = 1;
+            body.params.pageSize = 10;
+            return body;
+        }
+        const doIt = (session, eventName, time)=>{
+            let body = JSON.parse(JSON.stringify(basic));
+            body.method = "mobile.challenges.v2.progressEvent";
+
+            body.params.sessionToken = session;
+            const timeObj = doIt_getTime(time)
+            body.params.startedAt = timeObj.startedAt;
+            body.params.endedAt = timeObj.endedAt;
+            body.params.eventName = eventName;
+            body.params.value = 1
+            body.params.signature = new Signature(body).getSignature()
+            return body;
+        }
+        const doIt_getTime = (time)=>{
+            const endTime = new Date();
+            const endMils = endTime.getTime();
+            const startMils = endMils - 1000 * 60 * time;
+            const startTime = new Date(startMils);
+            return {
+                startedAt: startTime.toISOString(),
+                endedAt: endTime.toISOString(),
+            };
         }
         const start = (token, externalPlayerId)=>{
 
@@ -697,13 +770,121 @@
             }
         }
 
+
+        class Signature {
+            constructor(b) {
+                this.body = b;
+            }
+            UUIDtoByteArray(uuid) {
+                const text = uuid.replace(/-/g, "");
+                const num = text.length / 2;
+                const array = new Uint8Array(num);
+                for (let i = 0; i < num; i += 1) {
+                    const substring = text.substring(i * 2, i * 2 + 2);
+                    if (substring.length === 0) {
+                        array[i] = 0;
+                    } else {
+                        array[i] = parseInt(substring, 16);
+                    }
+                }
+                return array;
+            }
+            getSignature() {
+                const array = this.UUIDtoByteArray(this.body.params.applicationId);
+                const array2 = this.UUIDtoByteArray(this.body.params.sessionToken);
+                const array3 = new Uint8Array(16);
+                for (let i = 0; i < 16; i += 1) {
+                    if (i < 8) {
+                        array3[i] = array[i * 2 + 1];
+                    } else {
+                        array3[i] = array2[(i - 8) * 2];
+                    }
+                }
+                const text = this.getSignableText();
+                const sign = sha256.hmac(array3, text);
+                return this.arrayBufferToBase64(sign);
+            }
+            getSignableText() {
+                const text = this.body.params.eventName + this.body.params.startedAt
+                    + this.body.params.endedAt + this.body.params.value;
+                // const buf = Buffer.from(text, "utf8");
+                // const array = new Uint8Array(buf.length);
+                // for (let index = 0; index < buf.length; index += 1) {
+                //     array[index] = buf[index];
+                // }
+                return this.stringToByte(text);
+            }
+            arrayBufferToBase64(array) {
+                array = new Uint8Array(array);
+                var length = array.byteLength;
+                var table = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+                    'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+                    'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+                    'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+                    'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+                    'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+                    'w', 'x', 'y', 'z', '0', '1', '2', '3',
+                    '4', '5', '6', '7', '8', '9', '+', '/'];
+                var base64Str = '';
+                for (var i = 0; length - i >= 3; i += 3) {
+                    var num1 = array[i];
+                    var num2 = array[i + 1];
+                    var num3 = array[i + 2];
+                    base64Str += table[num1 >>> 2]
+                        + table[((num1 & 0b11) << 4) | (num2 >>> 4)]
+                        + table[((num2 & 0b1111) << 2) | (num3 >>> 6)]
+                        + table[num3 & 0b111111];
+                }
+                var lastByte = length - i;
+                let lastNum1;
+                if (lastByte === 1) {
+                    lastNum1 = array[i];
+                    base64Str += table[lastNum1 >>> 2] + table[((lastNum1 & 0b11) << 4)] + '==';
+                } else if (lastByte === 2) {
+                    lastNum1 = array[i];
+                    var lastNum2 = array[i + 1];
+                    base64Str += table[lastNum1 >>> 2]
+                        + table[((lastNum1 & 0b11) << 4) | (lastNum2 >>> 4)]
+                        + table[(lastNum2 & 0b1111) << 2]
+                        + '=';
+                }
+                return base64Str;
+            }
+            stringToByte(str) {
+                var len, c;
+                len = str.length;
+                var bytes = [];
+                for (var i = 0; i < len; i++) {
+                    c = str.charCodeAt(i);
+                    if (c >= 0x010000 && c <= 0x10FFFF) {
+                        bytes.push(((c >> 18) & 0x07) | 0xF0);
+                        bytes.push(((c >> 12) & 0x3F) | 0x80);
+                        bytes.push(((c >> 6) & 0x3F) | 0x80);
+                        bytes.push((c & 0x3F) | 0x80);
+                    } else if (c >= 0x000800 && c <= 0x00FFFF) {
+                        bytes.push(((c >> 12) & 0x0F) | 0xE0);
+                        bytes.push(((c >> 6) & 0x3F) | 0x80);
+                        bytes.push((c & 0x3F) | 0x80);
+                    } else if (c >= 0x000080 && c <= 0x0007FF) {
+                        bytes.push(((c >> 6) & 0x1F) | 0xC0);
+                        bytes.push((c & 0x3F) | 0x80);
+                    } else {
+                        bytes.push(c & 0xFF);
+                    }
+                }
+                return new Uint8Array(bytes);
+            }
+        }
+
         return {
             auth: auth,
             refreshToken: refreshToken,
             challengeList: challengeList,
             handShake: handShake,
             start: start,
-            join: join
+            join: join,
+            current: current,
+            doIt: doIt
         }
     })();
 
