@@ -69,20 +69,34 @@
                 GM_xmlhttpRequest(requestObj);
             }
         function get(url, e = {}){
+            UI.showLoading();
             return new Promise((resolve, reject)=>{
                 e.url = url;
                 e.method = "GET";
-                e.onload = resolve;
-                e.onerror = reject;
+                e.onload = res=>{
+                    UI.hideLoading()
+                    resolve(res)
+                };
+                e.onerror = err=>{
+                    UI.hideLoading()
+                    reject(err)
+                };
                 httpRequest(e)
             })
         }
         function post(url, e = {}){
+            UI.showLoading();
             return new Promise((resolve, reject)=>{
                 e.url = url;
                 e.method = "POST";
-                e.onload = resolve;
-                e.onerror = reject;
+                e.onload = res=>{
+                    UI.hideLoading()
+                    resolve(res)
+                };
+                e.onerror = err=>{
+                    UI.hideLoading()
+                    reject(err)
+                };
                 httpRequest(e)
             })
         }
@@ -137,30 +151,47 @@
                     active: true,
                     setParent :true
                 })*/
-                if(document.getElementById("tool-iframe").style.display==="block")return ;
+                if(document.getElementById("omen-iframe").style.display==="block")return ;
 
-                document.getElementById("tool-iframe").style.display = "block"
+                document.getElementById("omen-iframe").style.display = "block"
+                document.getElementById("omen-mask").style.display = "block"
                 OMEN.refreshToken(omenAuth.refresh_token).then(res=>{
                     console.log(res)
                     res = res.response;
                     if(res.status_code===undefined){
                         GM_setValue("omenAuth", res)
                         omenAuth = res;
-                         jq("#tool-iframe .omen-tokenresult")[0].innerText = "refresh success"
+                         jq("#omen-iframe .omen-tokenresult")[0].innerText = "refresh success"
                     }else{
-                         jq("#tool-iframe .omen-tokenresult")[0].innerText = res.error_description
+                         jq("#omen-iframe .omen-tokenresult")[0].innerText = res.error_description
                     }
                 })
-                //let a = GM_addStyle("#tool-iframe{display:block!important;}")
+                //let a = GM_addStyle("#omen-iframe{display:block!important;}")
                 //GM_log(a)
             })
         }
 
+        const showLoading = ()=>{
+            jq(".omen-content>.omen-header>.omen-loading>.icon").css("display", "initial");
+            jq(".omen-content>.omen-header>.omen-loading").css("visibility", "visible");
+        }
+        const hideLoading = ()=>{
+            jq(".omen-content>.omen-header>.omen-loading>.icon").css("display", "none");
+            jq(".omen-content>.omen-header>.omen-loading").css("visibility", "hidden");
+        }
         function initIframe(link){
             let html = `
-<div id="tool-iframe" style="display:none">
+            <div id="omen-mask"></div>
+<div id="omen-iframe" style="display:none">
     <div class="omen-content">
-        <button id="jy-iframe-close" onclick="document.getElementById('tool-iframe').style.display = 'none'">关闭</button>
+        <div class="omen-header">
+            <div class="omen-loading"><svg  t="1624533378166" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2471" ><path d="M510.976 62.464c-247.296 0-448 200.704-448 448s200.704 448 448 448 448-200.704 448-448-200.704-448-448-448z m0 175.104c32.768 0 59.904 26.624 59.904 59.904 0 32.768-26.624 59.904-59.904 59.904s-59.904-26.624-59.904-59.904 27.136-59.904 59.904-59.904z m0 700.416c-117.76 0-213.504-95.744-213.504-213.504 0-117.76 90.624-213.504 213.504-213.504 117.76 0 213.504-95.744 213.504-213.504 0-111.616-85.504-203.264-194.56-212.992l-0.512-0.512c227.328 9.728 409.088 197.12 409.088 427.008-0.512 236.032-191.488 427.008-427.52 427.008z" fill="#1296db" p-id="2472"></path><path d="M451.072 724.48c0 32.768 26.624 59.904 59.904 59.904 32.768 0 59.904-26.624 59.904-59.904 0-32.768-26.624-59.904-59.904-59.904-32.768 0-59.904 26.624-59.904 59.904z" fill="#1296db" p-id="2473"></path></svg>
+            少女祈祷中~</div>
+            <svg  id="omen-iframe-close" onclick="document.getElementById('omen-mask').style.display = document.getElementById('omen-iframe').style.display = 'none'"
+            t="1624536136145" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="3441" width="20" height="20"><path d="M940.802 939.949c0 0.014 0 0.021-0.051 0.044-28.183 28.22-73.991 28.262-102.218 0.05L512.127 614.299 186.382 940.653c-0.051 0.021-0.051 0.05-0.051 0.05-28.227 28.235-74.035 28.256-102.262 0.052-28.328-28.248-28.372-74.05-0.146-102.32l325.746-326.37L83.313 186.312c-28.278-28.227-28.328-74.027-0.094-102.29 0-0.022 0-0.036 0.044-0.052 28.183-28.19 73.948-28.212 102.226-0.007l326.355 325.745L837.64 83.34l0.044-0.051c28.234-28.227 73.99-28.256 102.269-0.014 28.32 28.226 28.32 74.027 0.094 102.312L614.3 511.942l326.406 325.745c28.228 28.227 28.322 74.02 0.095 102.262z" p-id="3442" fill="#2c2c2c"></path></svg>
+            <!--<button id="omen-iframe-close" onclick="document.getElementById('omen-mask').style.display = document.getElementById('omen-iframe').style.display = 'none'">关闭</button>-->
+        </div>
+        
         <h2>功能</h2>
         <a href="${link}" target="_blank">登录</a><br>
         <lable for="omen-localhost-link">
@@ -178,7 +209,7 @@
             <div class="omen-action-button">
                 <button id="omen-list-btn">可参与列表</button>
                 <button id="omen-current-btn">进行中</button>
-                <button id="omen-history-btn">已结束</button>
+                <button id="omen-prize-btn">奖品</button>
             </div>
             <div>
                 <ul id="omen-item-list">
@@ -188,30 +219,76 @@
     </div>
 </div>
 <style>
-    #tool-iframe{
+    #omen-mask{
+        width: 100%;
+        height: 100%;
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 998;
+        background: #0d0a31!important;
+        opacity: .85!important;
+        display: none;
+    }
+    #omen-iframe{
         position: fixed;
         top: 10%;
         left: 15%;
         width: 70%;
         background-color: aquamarine;
         height: 70%;
-
+        z-index: 999;
+        overflow:hidden;
+        border-radius: .5rem;
     }
-    #tool-iframe .omen-content{
+    #omen-iframe .omen-content{
         margin:1rem;
     }
-    #jy-iframe-close{
+    .omen-content > .omen-header{
+        height:20px;
+        display:flex;
+    }
+    .omen-content .omen-loading{
+        width: 53%;
+        text-align: right;
+        visibility: hidden;
+    }
+    .omen-content .omen-loading>.icon{
+        height:20px;
+        width:20px;
+        display:none;
+        transition: 0.5s;
+        animation: rotate 1s linear infinite;  /*开始动画后无限循环，用来控制rotate*/
+    }
+    @keyframes rotate{
+    0%{
+        transform: rotate(0);
+      }
+    50%{
+    	transform:rotate(180deg);
+    }
+    100%{
+         transform: rotate(360deg);
+    	}
+	}
+
+    #omen-iframe-close{
         position: absolute;
-        right: 0;
+        right: 20px;
+        cursor: pointer;
     }
     #omen-data{
         border: solid 1px #f00;
         padding: .5rem;
     }
+    #omen-item-list{
+        max-height: 100px;
+        overflow-y: scroll;
+    }
 </style>
             `;
            jq("body").append(html);
-           document.getElementById("tool-iframe").style.display = "block"
+           document.getElementById("omen-iframe").style.display = "block"
         }
 
         function EventListener(){
@@ -222,14 +299,14 @@
                 let value = e.target.value
                 let codeR = value.match(/code=(.*?)&/)
                 if(codeR==null || codeR.length<=1){
-                    jq("#tool-iframe .omen-code")[0].innerText = "解析失败";
+                    jq("#omen-iframe .omen-code")[0].innerText = "解析失败";
                 }else{
-                    jq("#tool-iframe .omen-code")[0].innerText = codeR[1]
+                    jq("#omen-iframe .omen-code")[0].innerText = codeR[1]
                 }
             }
 
             document.getElementById("omen-gettoken").addEventListener("click", (e)=>{
-                let code = jq("#tool-iframe .omen-code")[0].innerText
+                let code = jq("#omen-iframe .omen-code")[0].innerText
                 console.log(code)
                 OMEN.getToken(code).then(res=>{
                     res = res.response
@@ -237,9 +314,9 @@
                     if(res.status_code===undefined){
                         GM_setValue("omenAuth", res)
                         omenAuth = res;
-                        jq("#tool-iframe .omen-tokenresult")[0].innerText = "success"
+                        jq("#omen-iframe .omen-tokenresult")[0].innerText = "success"
                     }else{
-                        jq("#tool-iframe .omen-tokenresult")[0].innerText = res.error_description
+                        jq("#omen-iframe .omen-tokenresult")[0].innerText = res.error_description
                     }
                 })
             })
@@ -248,9 +325,9 @@
                 OMEN.getSession(omenAuth.access_token).then(res=>{
                     console.log(res)
                     if(res.status===200){
-                        jq("#tool-iframe .omen-sessionresult")[0].innerText = sessionToken = res.response.result.sessionId;
+                        jq("#omen-iframe .omen-sessionresult")[0].innerText = sessionToken = res.response.result.sessionId;
                     }else{
-                        jq("#tool-iframe .omen-sessionresult")[0].innerText = res.error_description;
+                        jq("#omen-iframe .omen-sessionresult")[0].innerText = res.error_description;
                     }
                 }).catch(err=>{
                     console.log("err", err)
@@ -309,6 +386,7 @@
                                 const progress = resp.result[0].progressPercentage;
                                 if(res.status===200){
                                     document.getElementById(e.target.id).innerText = `做任务（${progress}%）`
+                                    if(progress===100)document.getElementById(e.target.id).parentElement.remove()
                                 }else{
                                     alert("失败，详细信息在控制台");
                                 }
@@ -317,14 +395,39 @@
                     })
                 })
             })
-            document.getElementById("omen-history-btn").addEventListener("click", ()=>{
-                console.log("已完成|待抽奖");
+            document.getElementById("omen-prize-btn").addEventListener("click", ()=>{
+                console.log("奖品|待抽奖");
+                let list = jq("#omen-item-list")
+                list.empty();
+
+                const getList = (session, page)=>{
+                    return OMEN.prizeList(session, page).then(res=>{
+                        console.log(res)
+                        let resp = res.response;
+                        let collection = resp.result.collection;
+                        collection.forEach(item=>{
+                            if(item.drawing!=null){
+                                list.append(`<li>${item.drawing.state}: [${item.drawing.winner?"赢得":"未赢得"}] ${item.displayName} - 开奖时间：${item.drawing.drawDate}</li>`)
+                            }
+                        })
+                        if(resp.result.currentPageNumber<resp.result.totalPageCount){
+                            return getList(session, resp.result.currentPageNumber+1)
+                        }else{
+                            // 页数遍历完毕
+                            console.log("遍历完毕 - 当前页数 - ", resp.result.currentPageNumber)
+
+                        }
+                    })
+                }
+                getList(sessionToken, 1);
             })
 
         }
         return {
             init: init,
-            initIframe: initIframe
+            initIframe: initIframe,
+            showLoading: showLoading,
+            hideLoading: hideLoading
         }
     })();
 
@@ -402,7 +505,9 @@
         const doIt = (session, eventName, time)=>{
             return RPCRequest(OMEN_BODY.doIt(session, eventName, time))
         }
-        const historyList = (session)=>{}
+        const prizeList = (session, page=1)=>{
+            return RPCRequest(OMEN_BODY.prize(session, page));
+        }
         const RPCRequest = (params) => {
             return HTTP.POST("https://rpc-prod.versussystems.com/rpc", {
                 dataType: "json",
@@ -423,12 +528,13 @@
             join: join,
             currentList: currentList,
             doIt: doIt,
-            historyList: historyList,
+            prizeList: prizeList,
         }
     })();
     const OMEN_BODY = (()=>{
         const ClientId = "130d43f1-bb22-4a9c-ba48-d5743e84d113";
         const applicationId = "6589915c-6aa7-4f1b-9ef5-32fa2220c844";
+
         const basic = {
             "jsonrpc": "2.0",
             "method": null,
@@ -442,15 +548,21 @@
                 "userPreferredLanguage": "en"
             }
         }
+        const auth = (code)=>{
+            return {
+                grant_type: "authorization_code",
+                code: code,
+                client_id: ClientId,
+                redirect_uri: "http://localhost:9081/login"
+            }
+        }
 
-        const challengeList = (session)=>{
-            let body = JSON.parse(JSON.stringify(basic));
-            body.method = "mobile.challenges.v4.list";
-            body.params.sessionToken = session;
-            body.params.onlyShowEligibleChallenges = true;
-            body.params.page = 1;
-            body.params.pageSize = 10;
-            return body;
+        const refreshToken = (refresh_token)=>{
+            return {
+                grant_type: "refresh_token",
+                refresh_token: refresh_token,
+                client_id: ClientId,
+            }
         }
         const handShake = (token)=>{
             let body = JSON.parse(JSON.stringify(basic));
@@ -460,46 +572,6 @@
             body.params.page = 1;
             body.params.pageSize = 10;
             return body;
-        }
-        const join = (session, challengeStructureId, campaignId)=>{
-            let body = JSON.parse(JSON.stringify(basic));
-            body.method = "mobile.challenges.v2.join";
-            body.params.sessionToken = session;
-            body.params.challengeStructureId = challengeStructureId;
-            body.params.campaignId = campaignId;
-            body.params.timezone = "China Standard Time"
-            return body;
-        }
-        const current = (session)=>{
-            let body = JSON.parse(JSON.stringify(basic));
-            body.method = "mobile.challenges.v2.current";
-            body.params.sessionToken = session;
-            body.params.page = 1;
-            body.params.pageSize = 10;
-            return body;
-        }
-        const doIt = (session, eventName, time)=>{
-            let body = JSON.parse(JSON.stringify(basic));
-            body.method = "mobile.challenges.v2.progressEvent";
-
-            body.params.sessionToken = session;
-            const timeObj = doIt_getTime(time)
-            body.params.startedAt = timeObj.startedAt;
-            body.params.endedAt = timeObj.endedAt;
-            body.params.eventName = eventName;
-            body.params.value = 1
-            body.params.signature = new Signature(body).getSignature()
-            return body;
-        }
-        const doIt_getTime = (time)=>{
-            const endTime = new Date();
-            const endMils = endTime.getTime();
-            const startMils = endMils - 1000 * 60 * time;
-            const startTime = new Date(startMils);
-            return {
-                startedAt: startTime.toISOString(),
-                endedAt: endTime.toISOString(),
-            };
         }
         const start = (token, externalPlayerId)=>{
 
@@ -753,23 +825,64 @@
             };
         }
 
-        const auth = (code)=>{
+        const challengeList = (session)=>{
+            let body = JSON.parse(JSON.stringify(basic));
+            body.method = "mobile.challenges.v4.list";
+            body.params.sessionToken = session;
+            body.params.onlyShowEligibleChallenges = true;
+            body.params.page = 1;
+            body.params.pageSize = 10;
+            return body;
+        }
+        const join = (session, challengeStructureId, campaignId)=>{
+            let body = JSON.parse(JSON.stringify(basic));
+            body.method = "mobile.challenges.v2.join";
+            body.params.sessionToken = session;
+            body.params.challengeStructureId = challengeStructureId;
+            body.params.campaignId = campaignId;
+            body.params.timezone = "China Standard Time"
+            return body;
+        }
+        const current = (session)=>{
+            let body = JSON.parse(JSON.stringify(basic));
+            body.method = "mobile.challenges.v2.current";
+            body.params.sessionToken = session;
+            body.params.page = 1;
+            body.params.pageSize = 10;
+            return body;
+        }
+        const doIt = (session, eventName, time)=>{
+            let body = JSON.parse(JSON.stringify(basic));
+            body.method = "mobile.challenges.v2.progressEvent";
+
+            body.params.sessionToken = session;
+            const timeObj = doIt_getTime(time)
+            body.params.startedAt = timeObj.startedAt;
+            body.params.endedAt = timeObj.endedAt;
+            body.params.eventName = eventName;
+            body.params.value = 1
+            body.params.signature = new Signature(body).getSignature()
+            return body;
+        }
+        const doIt_getTime = (time)=>{
+            const endTime = new Date();
+            const endMils = endTime.getTime();
+            const startMils = endMils - 1000 * 60 * time;
+            const startTime = new Date(startMils);
             return {
-                grant_type: "authorization_code",
-                code: code,
-                client_id: ClientId,
-                redirect_uri: "http://localhost:9081/login"
-            }
+                startedAt: startTime.toISOString(),
+                endedAt: endTime.toISOString(),
+            };
         }
 
-        const refreshToken = (refresh_token)=>{
-            return {
-                grant_type: "refresh_token",
-                refresh_token: refresh_token,
-                client_id: ClientId,
-            }
+        const prize = (session, page=1)=>{
+            let body = JSON.parse(JSON.stringify(basic));
+            body.method = "mobile.prizes.v2.list";
+            body.params.sessionToken = session;
+            body.params.page = page;
+            body.params.pageSize = 10;
+            return body;
         }
-
 
         class Signature {
             constructor(b) {
@@ -884,7 +997,8 @@
             start: start,
             join: join,
             current: current,
-            doIt: doIt
+            doIt: doIt,
+            prize: prize
         }
     })();
 
