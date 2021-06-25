@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         其乐小工具
+// @name         Omen小工具
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  try to take over the world!
 // @author       jiye
 // @match        https://keylol.com/*
@@ -22,6 +22,7 @@
 // @require      https://cdn.staticfile.org/jquery/3.3.1/jquery.min.js
 // @require      https://cdn.jsdelivr.net/gh/jiyeme/OmenScript@2455ec2ff19eaf628b10d792bf2e95bbf28c8ff2/js/sha256.min.js
 // @icon         https://www.google.com/s2/favicons?domain=keylol.com
+// @downloadURL     https://cdn.jsdelivr.net/gh/jiyeme/OmenScript@master/omen.user.js
 // ==/UserScript==
 // TODO: 自动弹出地址？
 // @require      http://127.0.0.1:5500/js/main.ed19e0b4.chunk.js
