@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Omen小工具
 // @namespace    http://tampermonkey.net/
-// @version      0.7.3
+// @version      0.7.4
 // @description  try to take over the world!
 // @author       jiye
 // @match        https://keylol.com/*
@@ -453,8 +453,10 @@
                                 }
                             })
                         })
+                        // 点击“自动执行”事件
                         document.getElementById(id + "_auto").addEventListener("click", (e)=>{
                             TASK.add(`${omenAuth.sessionToken}|${e.target.dataset.eventname}`);
+                            alert("添加完毕");
                         })
                     })
                 })
