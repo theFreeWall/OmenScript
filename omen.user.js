@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Omen小工具
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.5
 // @description  try to take over the world!
 // @author       jiye
 // @match        https://keylol.com/*
@@ -146,7 +146,7 @@
         const init = ()=>{
             initToolBar();
             initIframe(login_link);
-            ACCOUNT.change(document.getElementById("omen-account-switch").value)
+            if(document.getElementById("omen-account-switch").value!=="")ACCOUNT.change(document.getElementById("omen-account-switch").value)
             EventListener();
         }
         function initToolBar(){
@@ -353,6 +353,7 @@
 
                 document.getElementById("omen-iframe").style.display = "block"
                 document.getElementById("omen-mask").style.display = "block"
+                if(omenAuth==null)return;
                 accessTokenUpdate();
                 loadChallengeList();
                 //let a = GM_addStyle("#omen-iframe{display:block!important;}")
