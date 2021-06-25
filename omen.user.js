@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Omen小工具
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  try to take over the world!
 // @author       jiye
 // @match        https://keylol.com/*
@@ -519,6 +519,9 @@
                     }else{
                         jq("#omen-iframe .omen-tokenresult")[0].innerText = res.error_description
                     }
+                }).catch(err=>{
+                    console.log("accessTokenUpdate err", err);
+                    jq("#omen-iframe .omen-tokenresult")[0].innerText = err.error_description
                 })
             }else{
                 jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken似乎在有效期内";
