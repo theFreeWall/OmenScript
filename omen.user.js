@@ -22,8 +22,8 @@
 // @require      https://cdn.staticfile.org/jquery/3.3.1/jquery.min.js
 // @require      https://cdn.jsdelivr.net/gh/jiyeme/OmenScript@2455ec2ff19eaf628b10d792bf2e95bbf28c8ff2/js/sha256.min.js
 // @icon         https://www.google.com/s2/favicons?domain=keylol.com
-// @updateURL   https://cdn.jsdelivr.net/gh/jiyeme/OmenScript@master/omen.user.js
-// @downloadURL     https://cdn.jsdelivr.net/gh/jiyeme/OmenScript@master/omen.user.js
+// @updateURL   https://github.com/jiyeme/OmenScript/raw/master/omen.user.js
+// @downloadURL     https://github.com/jiyeme/OmenScript/raw/master/omen.user.js
 // @namespace  jiyecafe@gmail.com-omen
 // ==/UserScript==
 // TODO: 自动弹出地址？
