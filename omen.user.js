@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Omen小工具
 // @namespace    http://tampermonkey.net/
-// @version      0.7.1
+// @version      0.7.2
 // @description  try to take over the world!
 // @author       jiye
 // @match        https://keylol.com/*
@@ -1157,6 +1157,11 @@
                     const info = item.split("|")
                     OMEN.doIt(info[0], info[1], 1).then(res=>{
                         console.log(res);
+                        const resp = res.response;
+                        let result = resp.result;
+                        if(result.length===0 || result[0].progressPercentage===100){
+                            remove(item);
+                        }
                     }).catch(err=>{
                         console.log("err", err);
                     })
@@ -1164,9 +1169,14 @@
             }, 61*1000);
         }
         const add = (item)=>{
-            console.log("add", item)
             taskData.add(item);
-            console.log(taskData)
+            store();
+        }
+        const remove = (item)=>{
+            taskData.delete(item)
+            store();
+        }
+        const store = ()=>{
             let it = taskData.keys();
             const temp = [];
             let t;
