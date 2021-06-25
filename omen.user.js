@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Omen小工具
 // @namespace    http://tampermonkey.net/
-// @version      0.6
+// @version      0.7
 // @description  try to take over the world!
 // @author       jiye
 // @match        https://keylol.com/*
@@ -515,6 +515,10 @@
                     console.log(res)
                     res = res.response;
                     if(res.status_code===undefined){
+                        ACCOUNT.set({
+                            auth: res,
+                            email: omenAuth.email
+                        })
                         UI.setState(2)
                         jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken刷新成功"
                     }else{
