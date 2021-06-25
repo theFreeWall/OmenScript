@@ -18,10 +18,12 @@
 // @connect    task.jysafe.cn
 // @connect    www.hpgamestream.com
 // @connect    rpc-prod.versussystems.com
+// @connect    api.hpbp.io
 // @require      https://cdn.staticfile.org/jquery/3.3.1/jquery.min.js
 // @require      https://cdn.jsdelivr.net/gh/jiyeme/OmenScript@2455ec2ff19eaf628b10d792bf2e95bbf28c8ff2/js/sha256.min.js
 // @icon         https://www.google.com/s2/favicons?domain=keylol.com
 // ==/UserScript==
+// TODO: 自动弹出地址？
 // @require      http://127.0.0.1:5500/js/main.ed19e0b4.chunk.js
 
 (function() {
@@ -32,7 +34,8 @@
     const ApplicationId = "6589915c-6aa7-4f1b-9ef5-32fa2220c844";
     const ClientId = "130d43f1-bb22-4a9c-ba48-d5743e84d113";
     const debug = true;
-    let omenAuth = GM_getValue("omenAuth")
+    let omenAccount = GM_getValue("omenAccount")||{};
+    let omenAuth = null;
 
     const HTTP = (function(){
 
@@ -90,14 +93,16 @@
                 e.url = url;
                 e.method = "POST";
                 e.onload = res=>{
-                    UI.hideLoading()
-                    resolve(res)
+                    UI.hideLoading();
+                    let resp = res.response;
+                    if(resp.error)reject(resp);
+                    else resolve(res);
                 };
                 e.onerror = err=>{
-                    UI.hideLoading()
-                    reject(err)
+                    UI.hideLoading();
+                    reject(err);
                 };
-                httpRequest(e)
+                httpRequest(e);
             })
         }
         return {
@@ -106,6 +111,31 @@
         }
     })();
 
+    const ACCOUNT = (()=>{
+        const set = (userInfo)=>{
+            console.log(userInfo)
+            //const uinfo = JSON.parse(window.atob(tokenInfo.access_token.split(".")[1]))
+            omenAccount[userInfo.email] = userInfo
+            GM_setValue("omenAccount",omenAccount)
+            omenAuth = userInfo.auth;
+            omenAuth.email = userInfo.email;
+        }
+        const change = (email)=>{
+            omenAuth = omenAccount[email].auth;
+            omenAuth.email = email;
+        }
+        const updateAuth = (auth)=>{
+            let email = omenAuth.email;
+            omenAccount[email] = auth;
+            omenAuth = auth;
+            omenAuth.email = email;
+        }
+        return {
+            set: set,
+            change: change,
+            updateAuth: updateAuth
+        }
+    })();
     const UI = (function(){
         let login_link = "https://oauth.hpbp.io/oauth/v1/auth?response_type=code&client_id=" + ClientId +"&redirect_uri=http://localhost:9081/login&scope=email+profile+offline_access+openid+user.profile.write+user.profile.username+user.profile.read&state=G5g495-R4cEE" + (Math.random()*100000) +"&max_age=28800&acr_values=urn:hpbp:hpid&prompt=consent"
         let data = []
@@ -113,6 +143,7 @@
         const init = ()=>{
             initToolBar();
             initIframe(login_link);
+            ACCOUNT.change(document.getElementById("omen-account-switch").value)
             EventListener();
         }
         function initToolBar(){
@@ -120,7 +151,7 @@
               jq("#nav-user-action-bar > .list-inline > li:nth-child(3)").after(`<li id="jiye-action" class="btn btn-user-action" style="position: relative;z-index: 9;">工具
                    <ul class="jiye-action-list">
                            <li class="jiye-action-item" id="login-link">Omen</li>
-                           <li class="jiye-action-item">2</li>
+                           <!--<li class="jiye-action-item">2</li>-->
                    </ul>
                 </li>
                 <style>
@@ -146,30 +177,6 @@
                 </style>
                 `);
 
-            document.getElementById("login-link").addEventListener("click", ()=>{
-                /*GM_openInTab(link, {
-                    active: true,
-                    setParent :true
-                })*/
-                if(document.getElementById("omen-iframe").style.display==="block")return ;
-
-                document.getElementById("omen-iframe").style.display = "block"
-                document.getElementById("omen-mask").style.display = "block"
-                OMEN.refreshToken(omenAuth.refresh_token).then(res=>{
-                    console.log(res)
-                    res = res.response;
-                    if(res.status_code===undefined){
-                        GM_setValue("omenAuth", res)
-                        omenAuth = res;
-                        UI.setState(2)
-                        jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken刷新成功"
-                    }else{
-                        jq("#omen-iframe .omen-tokenresult")[0].innerText = res.error_description
-                    }
-                })
-                //let a = GM_addStyle("#omen-iframe{display:block!important;}")
-                //GM_log(a)
-            })
         }
 
         const showLoading = ()=>{
@@ -192,7 +199,7 @@
                 },
                 2: ()=>{
                     // 获取SESSION
-                    document.getElementById("omen-localhost-link").disabled = true;
+                    document.getElementById("omen-localhost-link").disabled = false;
                     document.getElementById("omen-getsession").disabled = false;
                     document.getElementById("omen-list-btn").disabled = true;
                     document.getElementById("omen-current-btn").disabled = true;
@@ -200,7 +207,7 @@
                 },
                 3: ()=>{
                     // OK状态，可进行其它操作
-                    document.getElementById("omen-localhost-link").disabled = true;
+                    document.getElementById("omen-localhost-link").disabled = false;
                     document.getElementById("omen-getsession").disabled = true;
                     document.getElementById("omen-list-btn").disabled = false;
                     document.getElementById("omen-current-btn").disabled = false;
@@ -222,11 +229,14 @@
             <!--<button id="omen-iframe-close" onclick="document.getElementById('omen-mask').style.display = document.getElementById('omen-iframe').style.display = 'none'">关闭</button>-->
         </div>
 
-        <h2>功能</h2>
+        <div id="omen-account">切换账户：
+            <select id="omen-account-switch" title="Omen账户">
+            </select>
+        </div>
         <div>
             <a href="${link}" target="_blank" style="font-size:1.5rem">登录</a><br>
             <label for="omen-localhost-link">
-                localhost:<input id="omen-localhost-link" type="text" />
+                localhost:<input id="omen-localhost-link" type="text" style="width: 90%;" />
             </label>
             <br>CODE:<span class="omen-code">等待...</span>
             <br>
@@ -316,18 +326,41 @@
         padding: .5rem;
     }
     #omen-item-list{
-        max-height: 100px;
+        max-height: 35vh;
         overflow-y: scroll;
     }
 </style>
             `;
-           jq("body").append(html);
-           //document.getElementById("omen-iframe").style.display = "block"
-           //document.getElementById("omen-mask").style.display = "block"
+            jq("body").append(html);
+            //document.getElementById("omen-iframe").style.display = "block"
+            //document.getElementById("omen-mask").style.display = "block"
+            updateAccountList();
+        }
+        const updateAccountList = ()=>{
+            jq("#omen-account-switch").empty();
+            for(let _email in omenAccount){
+                jq("#omen-account-switch").append(`<option>${_email}</option>`);
+            }
         }
 
         function EventListener(){
-            let sessionToken = null;
+
+            document.getElementById("login-link").addEventListener("click", ()=>{
+                if(document.getElementById("omen-iframe").style.display==="block")return ;
+
+                document.getElementById("omen-iframe").style.display = "block"
+                document.getElementById("omen-mask").style.display = "block"
+                accessTokenUpdate();
+                loadChallengeList();
+                //let a = GM_addStyle("#omen-iframe{display:block!important;}")
+                //GM_log(a)
+            })
+            // 账户切换
+            document.getElementById("omen-account-switch").onchange = (e)=>{
+                ACCOUNT.change(document.getElementById("omen-account-switch").value)
+                sessionTokenUpdate();
+                UI.setState(1)
+            }
             // localhost地址输入事件
             document.getElementById("omen-localhost-link").onchange = (e)=>{
                 console.log(e)
@@ -336,86 +369,50 @@
                 if(codeR==null || codeR.length<=1){
                     jq("#omen-iframe .omen-code")[0].innerText = "解析失败";
                 }else{
+                    // 解析成功，获取认证信息
+                    let auth = null
+                    const startTime = parseInt(new Date().getTime()/1000);
+
                     jq("#omen-iframe .omen-code")[0].innerText = codeR[1]
                     OMEN.getToken(codeR[1]).then(res=>{
                         console.log(res)
-                        let resp = res.response
-                        if(resp.status_code===undefined){
-                            GM_setValue("omenAuth", resp)
-                            omenAuth = resp;
-                            UI.setState(2)
+                        auth = res.response
+                        auth.startTime = startTime;
+                        if(auth.status_code===undefined){
                             jq("#omen-iframe .omen-tokenresult")[0].innerText = "成功"
+                            return OMEN.getUserinfo(auth.access_token)
                         }else{
-                            jq("#omen-iframe .omen-tokenresult")[0].innerText = resp.error_description
+                            jq("#omen-iframe .omen-tokenresult")[0].innerText = auth.error_description
                         }
+                    }).then(res=>{
+                        console.log(res)
+                        const resp = res.response;
+                        UI.setState(2);
+                        ACCOUNT.set({
+                            auth: auth,
+                            email: resp.email
+                        })
+                        updateAccountList();
+                        document.getElementById("omen-account-switch").value = resp.email;
                     })
                 }
             }
 
             document.getElementById("omen-refreshtoken").addEventListener("click", (e)=>{
-                jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken刷新中..."
-
-                OMEN.refreshToken(omenAuth.refresh_token).then(res=>{
-                    console.log(res)
-                    let resp = res.response;
-                    if(resp.status_code===undefined){
-                        GM_setValue("omenAuth", resp)
-                        omenAuth = resp;
-                        jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken刷新成功"
-                    }else{
-                        jq("#omen-iframe .omen-tokenresult")[0].innerText = resp.error_description
-                    }
-                })
+                accessTokenUpdate(true);
             })
 
             document.getElementById("omen-getsession").addEventListener("click", (e)=>{
-                jq("#omen-iframe .omen-sessionresult")[0].innerText = "获取中~";
-                OMEN.getSession(omenAuth.access_token).then(res=>{
-                    console.log(res)
-                    if(res.status===200){
-                        jq("#omen-iframe .omen-sessionresult")[0].innerText = sessionToken = res.response.result.sessionId;
-                        UI.setState(3);
-                    }else{
-                        jq("#omen-iframe .omen-sessionresult")[0].innerText = res.response.error_description;
-                    }
-                }).catch(err=>{
-                    console.log("err", err)
-                    jq("#omen-iframe .omen-sessionresult")[0].innerText = "AccessToken可能过期了！";
-                })
+                sessionTokenUpdate();
             })
 
             document.getElementById("omen-list-btn").addEventListener("click", ()=>{
-                jq("#omen-item-list").empty();
-                OMEN.getChallengeList(sessionToken).then(res=>{
-                    //console.log(res);
-                    let resp = res.response;
-                    console.log(resp)
-                    let list = resp.result.collection;
-
-                    list.forEach(item=>{
-                        let id = `${item.challengeStructureId}|${item.prize.campaignId}`
-                        jq("#omen-item-list").append(`<li >${item.prize.displayName} - ${item.displayName}    <button id="${id}">参加</button>` )
-                        // 监听事件
-                        document.getElementById(id).addEventListener("click", (e)=>{
-                            let id = e.target.id.split("|");
-                            OMEN.join(sessionToken, id[0], id[1]).then(res=>{
-                                console.log(res)
-                                if(res.status===200){
-                                    alert("success")
-                                    document.getElementById(e.target.id).parentElement.remove()
-                                }else{
-                                    alert("失败，详细信息在控制台");
-                                }
-                            })
-                        })
-                    })
-
-                });
+                loadChallengeList();
             });
             document.getElementById("omen-current-btn").addEventListener("click", ()=>{
                 jq("#omen-item-list").empty();
                 console.log("进行中")
-                OMEN.currentList(sessionToken).then(res=>{
+                OMEN.currentList(omenAuth.sessionToken).then(res=>{
                     let resp = res.response;
                     console.log(resp)
                     let list = resp.result.collection;
@@ -430,7 +427,7 @@
                             let time=prompt('请输入任务执行时间(单位:分钟)：');
                             console.log(time)
 
-                            OMEN.doIt(sessionToken, e.target.dataset.eventname, parseInt(time)).then(res=>{
+                            OMEN.doIt(omenAuth.sessionToken, e.target.dataset.eventname, parseInt(time)).then(res=>{
                                 console.log(res)
                                 const resp = res.response;
                                 const progress = resp.result[0].progressPercentage;
@@ -469,10 +466,77 @@
                         }
                     })
                 }
-                getList(sessionToken, 1);
+                getList(omenAuth.sessionToken, 1);
             })
-
         }
+
+        function loadChallengeList(){
+            jq("#omen-item-list").empty();
+            OMEN.getChallengeList(omenAuth.sessionToken).then(res=>{
+                //console.log(res);
+                let resp = res.response;
+                console.log(resp)
+                let list = resp.result.collection;
+
+                list.forEach(item=>{
+                    let id = `${item.challengeStructureId}|${item.prize.campaignId}`
+                    jq("#omen-item-list").append(`<li >${item.prize.displayName} - ${item.displayName}    <button id="${id}">参加</button>` )
+                    // 监听事件
+                    document.getElementById(id).addEventListener("click", (e)=>{
+                        let id = e.target.id.split("|");
+                        OMEN.join(omenAuth.sessionToken, id[0], id[1]).then(res=>{
+                            console.log(res)
+                            if(res.status===200){
+                                alert("参加成功")
+                                document.getElementById(e.target.id).parentElement.remove()
+                            }else{
+                                alert("失败，详细信息在控制台");
+                            }
+                        })
+                    })
+                })
+
+            }).catch(err=>{
+                console.log(err);
+                const errD = err.error;
+                if(errD.code===603&&errD.message === "Session is not valid"){
+                    sessionTokenUpdate();
+                }
+            });
+        }
+        function accessTokenUpdate(force = false){
+            if(omenAuth.startTime + omenAuth.expires_in <= parseInt(new Date().getTime()/1000) || force){
+                jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken刷新中..."
+                OMEN.refreshToken(omenAuth.refresh_token).then(res=>{
+                    console.log(res)
+                    res = res.response;
+                    if(res.status_code===undefined){
+                        UI.setState(2)
+                        jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken刷新成功"
+                    }else{
+                        jq("#omen-iframe .omen-tokenresult")[0].innerText = res.error_description
+                    }
+                })
+            }else{
+                jq("#omen-iframe .omen-tokenresult")[0].innerText = "AccessToken似乎在有效期内";
+            }
+        }
+        function sessionTokenUpdate(){
+            jq("#omen-iframe .omen-sessionresult")[0].innerText = "更新中~";
+            return OMEN.getSession(omenAuth.access_token).then(res=>{
+                console.log(res)
+                if(res.status===200){
+                    jq("#omen-iframe .omen-sessionresult")[0].innerText = omenAuth.sessionToken = res.response.result.sessionId;
+                    UI.setState(3);
+                }else{
+                    return Promise.reject(res.response.error_description);
+                }
+            }).catch(err=>{
+                console.log("err", err)
+                jq("#omen-iframe .omen-sessionresult")[0].innerText = "AccessToken可能过期了！";
+            })
+        }
+
         return {
             init: init,
             initIframe: initIframe,
@@ -540,8 +604,20 @@
                     return Promise.reject(res)
                 }
             }).then(res=>{
+                console.log(res)
                 res = res.response;
                 return RPCRequest(OMEN_BODY.start(res.result.token, res.result.players[0].externalPlayerId));
+            })
+        }
+        const getUserinfo =(authorization)=>{
+            // https://api.hpbp.io/user/v1/users/me
+            let url = "https://api.hpbp.io/user/v1/users/me"
+            return HTTP.GET(url, {
+                dataType: "json",
+                headers: {
+                    Authorization: "Bearer " + authorization,
+                    "X-HPBP-Tenant-ID": "omencc-prod"
+                }
             })
         }
         const getChallengeList = (session)=>{
@@ -575,6 +651,7 @@
             getToken:getToken,
             refreshToken: refreshToken,
             getSession: getSession,
+            getUserinfo: getUserinfo,
             getChallengeList: getChallengeList,
             join: join,
             currentList: currentList,
