@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Omen小工具
 // @namespace    http://tampermonkey.net/
-// @version      0.7
+// @version      0.7.1
 // @description  try to take over the world!
 // @author       jiye
 // @match        https://keylol.com/*
@@ -370,6 +370,7 @@
                 console.log(e)
                 let value = e.target.value
                 let codeR = value.match(/code=(.*?)&/)
+                jq("#omen-iframe .omen-tokenresult")[0].innerText = jq("#omen-iframe .omen-sessionresult")[0].innerText = "等待操作";
                 if(codeR==null || codeR.length<=1){
                     jq("#omen-iframe .omen-code")[0].innerText = "解析失败";
                 }else{
@@ -423,7 +424,7 @@
 
                     list.forEach(item=>{
                         let id = `${item.challengeStructureId}|${item.prize.campaignId}`
-                        jq("#omen-item-list").append(`<li >${item.prize.displayName} - ${item.displayName}    <button id="${id}" data-eventname="${item.relevantEvents[0]}">做任务（${item.progressPercentage}%）</button>` )
+                        jq("#omen-item-list").append(`<li >${item.prize.displayName} - ${item.displayName}    <button id="${id}" data-eventname="${item.relevantEvents[0]}">做任务（${item.progressPercentage}%）</button><button id="${id}_auto" data-eventname="${item.relevantEvents[0]}">自动做任务</button>` )
                         // 监听事件
                         document.getElementById(id).addEventListener("click", (e)=>{
                             console.log(e)
@@ -442,6 +443,9 @@
                                     alert("失败，详细信息在控制台");
                                 }
                             })
+                        })
+                        document.getElementById(id + "_auto").addEventListener("click", (e)=>{
+                            TASK.add(`${omenAuth.sessionToken}|${e.target.dataset.eventname}`);
                         })
                     })
                 })
@@ -1141,9 +1145,47 @@
         }
     })();
 
+    const TASK = (()=>{
+        let taskData = new Set(JSON.parse( sessionStorage.getItem("omenTask") || "[]"));
+
+        const autoDo = ()=>{
+            let tasker = setInterval(()=>{
+                console.log("自动做任务")
+                if(taskData==null)return;
+
+                for(let item of taskData){
+                    const info = item.split("|")
+                    OMEN.doIt(info[0], info[1], 1).then(res=>{
+                        console.log(res);
+                    }).catch(err=>{
+                        console.log("err", err);
+                    })
+                }
+            }, 61*1000);
+        }
+        const add = (item)=>{
+            console.log("add", item)
+            taskData.add(item);
+            console.log(taskData)
+            let it = taskData.keys();
+            const temp = [];
+            let t;
+            while( !(t = it.next()).done){
+                console.log(t)
+                temp.push(t.value)
+            }
+            sessionStorage.setItem("omenTask", JSON.stringify(temp));
+        }
+        return {
+            autoDo: autoDo,
+            add: add
+        }
+    })();
+
     jq(document).ready(()=>{
         if(window.location.href.includes("keylol")){
             UI.init();
+            TASK.autoDo();
         }else if(window.location.href.includes("hp.com")){
             //jq("script[src='https://static.id.hp.com/login3/static/js/main.ed19e0b4.chunk.js']")[0].remove()
 
