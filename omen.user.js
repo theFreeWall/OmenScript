@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Omen小工具
 // @namespace    http://tampermonkey.net/
-// @version      0.5
+// @version      0.6
 // @description  try to take over the world!
 // @author       jiye
 // @match        https://keylol.com/*
@@ -151,7 +151,7 @@
         }
         function initToolBar(){
 
-              jq("#nav-user-action-bar > .list-inline > li:nth-child(3)").after(`<li id="jiye-action" class="btn btn-user-action" style="position: relative;z-index: 9;">工具
+              jq("#nav-user-action-bar > .list-inline > span:nth-child(1)").before(`<li id="jiye-action" class="btn btn-user-action" style="position: relative;z-index: 9;">工具
                    <ul class="jiye-action-list">
                            <li class="jiye-action-item" id="login-link">Omen</li>
                            <!--<li class="jiye-action-item">2</li>-->
