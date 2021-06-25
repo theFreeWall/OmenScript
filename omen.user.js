@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Omen小工具
 // @namespace    http://tampermonkey.net/
-// @version      0.7.2
+// @version      0.7.3
 // @description  try to take over the world!
 // @author       jiye
 // @match        https://keylol.com/*
@@ -219,6 +219,13 @@
             }
             action[state]();
         }
+        const updateAccountList = ()=>{
+            jq("#omen-account-switch").empty();
+            for(let _email in omenAccount){
+                jq("#omen-account-switch").append(`<option>${_email}</option>`);
+            }
+        }
+
         function initIframe(link){
             let html = `
             <div id="omen-mask"></div>
@@ -254,9 +261,14 @@
                 <button id="omen-list-btn">可参与列表</button>
                 <button id="omen-current-btn">进行中</button>
                 <button id="omen-prize-btn">奖品</button>
+                <button id="omen-log-btn">自动执行日志</button>
             </div>
-            <div>
+            <div id="omen-item-area">
                 <ul id="omen-item-list">
+                </ul>
+                <ul id="omen-log-list" style="display:none;">
+                    <li>日志列表：</li>
+                    <li></li>
                 </ul>
             </div>
         </div>
@@ -328,7 +340,7 @@
         border: solid 1px #f00;
         padding: .5rem;
     }
-    #omen-item-list{
+    #omen-item-list, #omen-log-list{
         max-height: 35vh;
         overflow-y: scroll;
     }
@@ -339,13 +351,6 @@
             //document.getElementById("omen-mask").style.display = "block"
             updateAccountList();
         }
-        const updateAccountList = ()=>{
-            jq("#omen-account-switch").empty();
-            for(let _email in omenAccount){
-                jq("#omen-account-switch").append(`<option>${_email}</option>`);
-            }
-        }
-
         function EventListener(){
 
             document.getElementById("login-link").addEventListener("click", ()=>{
@@ -412,9 +417,13 @@
             })
 
             document.getElementById("omen-list-btn").addEventListener("click", ()=>{
+                document.getElementById("omen-item-list").style.display = "block";
+                document.getElementById("omen-log-list").style.display = "none";
                 loadChallengeList();
             });
             document.getElementById("omen-current-btn").addEventListener("click", ()=>{
+                document.getElementById("omen-item-list").style.display = "block";
+                document.getElementById("omen-log-list").style.display = "none";
                 jq("#omen-item-list").empty();
                 console.log("进行中")
                 OMEN.currentList(omenAuth.sessionToken).then(res=>{
@@ -452,6 +461,8 @@
             })
             document.getElementById("omen-prize-btn").addEventListener("click", ()=>{
                 console.log("奖品|待抽奖");
+                document.getElementById("omen-item-list").style.display = "block";
+                document.getElementById("omen-log-list").style.display = "none";
                 let list = jq("#omen-item-list")
                 list.empty();
 
@@ -475,6 +486,10 @@
                     })
                 }
                 getList(omenAuth.sessionToken, 1);
+            })
+            document.getElementById("omen-log-btn").addEventListener("click", ()=>{
+                document.getElementById("omen-item-list").style.display = "none";
+                document.getElementById("omen-log-list").style.display = "block";
             })
         }
 
@@ -1159,6 +1174,7 @@
                         console.log(res);
                         const resp = res.response;
                         let result = resp.result;
+                        jq("#omen-log-list > li:nth-child(2)").before(`<li>奖品：${result[0].prize.displayName} - 任务：${result[0].displayName} - 进度： ${result[0].progressPercentage}%</li>`)
                         if(result.length===0 || result[0].progressPercentage===100){
                             remove(item);
                         }
